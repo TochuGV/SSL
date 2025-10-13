@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#define NUMESTADOS 15
-#define NUMCOLS 13
+
+#define NUMESTADOS 20
+#define NUMCOLS 16
 #define TAMLEX 32+1
 #define TAMNOM 20+1
 
@@ -10,12 +11,23 @@
 FILE* in;
 
 typedef enum {
+  T_ENTERO,
+  T_REAL,
+  T_CARACTER,
+  T_DESCONOCIDO,
+} TIPO_DATO;
+
+typedef enum {
   INICIO,
   FIN,
   LEER,
   ESCRIBIR,
+  TIPO_INT,
+  TIPO_CHAR,
+  TIPO_FLOAT,
   ID,
-  CONSTANTE,
+  CONSTANTE_INT,
+  CONSTANTE_FLOAT,
   PARENIZQUIERDO,
   PARENDERECHO,
   PUNTOYCOMA,
@@ -24,19 +36,51 @@ typedef enum {
   SUMA,
   RESTA,
   FDT,
-  ERRORLEXICO
+  ERRORLEXICO,
+  SI,
+  ENTONCES,
+  SINO,
+  FIN_SI,
+  MIENTRAS,
+  HACER,
+  FIN_MIENTRAS,
+  REPETIR,
+  HASTA,
+  OP_RELACIONAL,
 } TOKEN;
 
 typedef struct {
   char identifi[TAMLEX];
   TOKEN t; /* t=0, 1, 2, 3 Palabra Reservada, t=ID=4 Identificador */
+  TIPO_DATO tipo;
 } RegTS;
 
-RegTS TS[1000] = { {"inicio", INICIO}, {"fin", FIN}, {"leer", LEER}, {"escribir", ESCRIBIR}, {"$", 99} };
+RegTS TS[1000] = {
+  {"inicio", INICIO, T_DESCONOCIDO},
+  {"fin", FIN, T_DESCONOCIDO},
+  {"leer", LEER, T_DESCONOCIDO},
+  {"escribir", ESCRIBIR, T_DESCONOCIDO},
+  {"int", TIPO_INT, T_ENTERO},
+  {"char", TIPO_CHAR, T_CARACTER},
+  {"float", TIPO_FLOAT, T_REAL},
+  {"si", SI, T_DESCONOCIDO},
+  {"entonces", ENTONCES, T_DESCONOCIDO},
+  {"sino", SINO, T_DESCONOCIDO},
+  {"fin_si", FIN_SI, T_DESCONOCIDO},
+  {"mientras", MIENTRAS, T_DESCONOCIDO},
+  {"hacer", HACER, T_DESCONOCIDO},
+  {"fin_mientras", FIN_MIENTRAS, T_DESCONOCIDO},
+  {"repetir", REPETIR, T_DESCONOCIDO},
+  {"hasta", HASTA, T_DESCONOCIDO},
+  {"$", 99, T_DESCONOCIDO}
+};
+
 typedef struct {
   TOKEN clase;
   char nombre[TAMLEX];
-  int valor;
+  int valor_entero;
+  float valor_real;
+  TIPO_DATO tipo;
 } REG_EXPRESION;
 
 char buffer[TAMLEX];
