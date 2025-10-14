@@ -162,146 +162,146 @@ int main(int argc, char* argv[]){
 }
 
 /**********Procedimientos de Analisis Sintactico (PAS) *****************/
-void Objetivo(void)
-{
+void Objetivo(void){
 /* <objetivo> -> <programa> FDT #terminar */
 Programa();
 Match(FDT);
 Terminar();
 }
-void Programa(void)
-{
+
+void Programa(void){
 /* <programa> -> #comenzar INICIO <listaSentencias> FIN */
 Comenzar();// invocacion a las rutinas semanticas, en la gramatica se coloca con #
 Match(INICIO);
 ListaSentencias();
 Match(FIN);
 }
-void ListaSentencias(void)
-{
+
+void ListaSentencias(void){
 /* <listaSentencias> -> <sentencia> {<sentencia>} */
 Sentencia();
-while ( 1 )
-{
-switch ( ProximoToken() )
-{
-case ID : case LEER : case ESCRIBIR :
+  while(1){
+    switch(ProximoToken()){
+      case ID:
+      case LEER:
+      case ESCRIBIR:
 Sentencia();
 break;
-default : return;
+      default: 
+        return;
 }
 }
 }
-void Sentencia(void)
-{
+
+void Sentencia(void){
 TOKEN tok = ProximoToken();
 REG_EXPRESION izq, der;
-switch ( tok )
-{
-case ID : /* <sentencia> -> ID := <expresion> #asignar ; (rutina semantica)*/
+  switch(tok){
+    case ID:
+      /* <sentencia> -> ID := <expresion> #asignar ; (rutina semantica)*/
 Identificador(&izq);
 Match(ASIGNACION);
 Expresion(&der);
 Asignar(izq, der);
 Match(PUNTOYCOMA);
 break;
-case LEER : /* <sentencia> -> LEER ( <listaIdentificadores> ) */
+    case LEER:
+      /* <sentencia> -> LEER ( <listaIdentificadores> ) */
 Match(LEER);
 Match(PARENIZQUIERDO);
 ListaIdentificadores();
 Match(PARENDERECHO);
 Match(PUNTOYCOMA);
 break;
-case ESCRIBIR : /* <sentencia> -> ESCRIBIR ( <listaExpresiones> ) */
+    case ESCRIBIR:
+      /* <sentencia> -> ESCRIBIR ( <listaExpresiones> ) */
 Match(ESCRIBIR);
 Match(PARENIZQUIERDO);
 ListaExpresiones();
 Match(PARENDERECHO);
 Match(PUNTOYCOMA);
 break;
-default : return;
+    default:
+      return;
 }
 }
-void ListaIdentificadores(void)
-{
+
+void ListaIdentificadores(void){
 /* <listaIdentificadores> -> <identificador> #leer_id {COMA <identificador> #leer_id} */
 TOKEN t;
 REG_EXPRESION reg;
 Identificador(&reg);
 Leer(reg);
-for ( t = ProximoToken(); t == COMA; t = ProximoToken() )
-{
+  for(t = ProximoToken(); t == COMA; t = ProximoToken()){
   Match(COMA);
 Identificador(&reg);
 Leer(reg);
 }
 }
-void Identificador(REG_EXPRESION * presul)
-{
+
+void Identificador(REG_EXPRESION * presul){
 /* <identificador> -> ID #procesar_id */
 Match(ID);
 *presul = ProcesarId();
 }
-void ListaExpresiones(void)
-{
+
+void ListaExpresiones(void){
 /* <listaExpresiones> -> <expresion> #escribir_exp {COMA <expresion> #escribir_exp} */
 TOKEN t;
 REG_EXPRESION reg;
 Expresion(&reg);
 Escribir(reg);
-for ( t = ProximoToken(); t == COMA; t = ProximoToken() )
-{
+  for(t = ProximoToken(); t == COMA; t = ProximoToken()){
 Match(COMA);
 Expresion(&reg);
 Escribir(reg);
 }
 }
-void Expresion(REG_EXPRESION * presul)
-{
+
+void Expresion(REG_EXPRESION * presul){
 /* <expresion> -> <primaria> { <operadorAditivo> <primaria> #gen_infijo } */
 REG_EXPRESION operandoIzq, operandoDer;
 char op[TAMLEX];
 TOKEN t;
 Primaria(&operandoIzq);
-for ( t = ProximoToken(); t == SUMA || t == RESTA; t = ProximoToken() )
-{
+  for(t = ProximoToken(); t == SUMA || t == RESTA; t = ProximoToken()){
 OperadorAditivo(op);
 Primaria(&operandoDer);
 operandoIzq = GenInfijo(operandoIzq, op, operandoDer);
 }
 *presul = operandoIzq;
 }
-void Primaria(REG_EXPRESION * presul)
-{
+
+void Primaria(REG_EXPRESION * presul){
 TOKEN tok = ProximoToken();
-switch ( tok )
-{
-case ID : /* <primaria> -> <identificador> */
+  switch(tok){
+    case ID:
+      /* <primaria> -> <identificador> */
 Identificador(presul);
 break;
 case CONSTANTE : /* <primaria> -> CONSTANTE #procesar_cte */
 Match(CONSTANTE);
 *presul = ProcesarCte();
 break;
-case PARENIZQUIERDO : /* <primaria> -> PARENIZQUIERDO <expresion> PARENDERECHO */
+    case PARENIZQUIERDO:
+      /* <primaria> -> PARENIZQUIERDO <expresion> PARENDERECHO */
 Match(PARENIZQUIERDO);
 Expresion(presul);
 Match(PARENDERECHO);
 break;
-default : return;
+    default:
+      return;
 }
 }
-void OperadorAditivo(char * presul)
-{
+
+void OperadorAditivo(char * presul){
 /* <operadorAditivo> -> SUMA #procesar_op | RESTA #procesar_op */
 TOKEN t = ProximoToken();
-if ( t == SUMA || t == RESTA )
-{
+  if (t == SUMA || t == RESTA){
 Match(t);
 strcpy(presul, ProcesarOp());
 }
-else
-ErrorSintactico(t);
+  else ErrorSintactico(t);
 }
 /**********************Rutinas Semanticas******************************/
 REG_EXPRESION ProcesarCte(void)
@@ -313,8 +313,8 @@ strcpy(reg.nombre, buffer);
 sscanf(buffer, "%d", &reg.valor);
 return reg;
 }
-REG_EXPRESION ProcesarId(void)
-{
+
+REG_EXPRESION ProcesarId(void){
 /* Declara ID y construye el correspondiente registro semantico */
 REG_EXPRESION reg;
 Chequear(buffer);
@@ -322,62 +322,59 @@ reg.clase = ID;
 strcpy(reg.nombre, buffer);
 return reg;
 }
-char * ProcesarOp(void)
-{
+
+char * ProcesarOp(void){
 /* Declara OP y construye el correspondiente registro semantico */
 return buffer;
 }
-void Leer(REG_EXPRESION in)
-{
+
+void Leer(REG_EXPRESION in){
 /* Genera la instruccion para leer */
 Generar("Read", in.nombre, "Entera", "");
 }
-void Escribir(REG_EXPRESION out)
-{
+
+void Escribir(REG_EXPRESION out){
 /* Genera la instruccion para escribir */
 Generar("Write", Extraer(&out), "Entera", "");
 }
-REG_EXPRESION GenInfijo(REG_EXPRESION e1, char * op, REG_EXPRESION e2)
-{
-/* Genera la instruccion para una operacion infija y construye un registro semantico con el resultado
-*/
+
+REG_EXPRESION GenInfijo(REG_EXPRESION e1, char * op, REG_EXPRESION e2){
+  /* Genera la instruccion para una operacion infija y construye un registro semantico con el resultado */
 REG_EXPRESION reg;
 static unsigned int numTemp = 1;
 char cadTemp[TAMLEX] ="Temp&";
 char cadNum[TAMLEX];
 char cadOp[TAMLEX];
-if ( op[0] == '-' ) strcpy(cadOp, "Restar");
-if ( op[0] == '+' ) strcpy(cadOp, "Sumar");
+  if(op[0] == '-') strcpy(cadOp, "Restar");
+  if(op[0] == '+') strcpy(cadOp, "Sumar");
 sprintf(cadNum, "%d", numTemp);
 numTemp++;
 strcat(cadTemp, cadNum);
-if ( e1.clase == ID) Chequear(Extraer(&e1));
-if ( e2.clase == ID) Chequear(Extraer(&e2));
+  if(e1.clase == ID) Chequear(Extraer(&e1));
+  if(e2.clase == ID) Chequear(Extraer(&e2));
 Chequear(cadTemp);
 Generar(cadOp, Extraer(&e1), Extraer(&e2), cadTemp);
 strcpy(reg.nombre, cadTemp);
 return reg;
 }
 /***************Funciones Auxiliares**********************************/
-void Match(TOKEN t)
-{
-if ( !(t == ProximoToken()) ) ErrorSintactico();
+void Match(TOKEN t){
+  if(!(t == ProximoToken())) ErrorSintactico();
 flagToken = 0;
 }
-TOKEN ProximoToken()
-{
-if ( !flagToken )
-{
+
+TOKEN ProximoToken(){
+  if(!flagToken){
 tokenActual = scanner();
-if ( tokenActual == ERRORLEXICO ) ErrorLexico();
+    if(tokenActual == ERRORLEXICO) ErrorLexico();
 flagToken = 1;
-if ( tokenActual == ID )
-{
+    if(tokenActual == ID){
 Buscar(buffer, TS, &tokenActual);
 }
 }
 return tokenActual;
 }
+
 void ErrorLexico(){
   printf("Error Lexico\n");
 };
