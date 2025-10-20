@@ -120,6 +120,15 @@ void Comenzar(void);
 void Terminar(void);
 void Asignar(REG_EXPRESION izq, REG_EXPRESION der);
 
+// Función auxiliar
+
+char* TipoDatoToString(TIPO_DATO tipo){
+  if (tipo == T_REAL) return "Real";
+  if (tipo == T_ENTERO) return "Entero";
+  if (tipo == T_CARACTER) return "Caracter";
+  return "Desconocido";
+}
+
 /***************************Programa Principal************************/
 int main(int argc, char* argv[]){
   TOKEN tok;
@@ -173,6 +182,7 @@ void Programa(void){
 /* <programa> -> #comenzar INICIO <listaSentencias> FIN */
 Comenzar();// invocacion a las rutinas semanticas, en la gramatica se coloca con #
 Match(INICIO);
+  //ListaDeclaraciones();
 ListaSentencias();
 Match(FIN);
 }
@@ -279,9 +289,14 @@ TOKEN tok = ProximoToken();
       /* <primaria> -> <identificador> */
 Identificador(presul);
 break;
-case CONSTANTE : /* <primaria> -> CONSTANTE #procesar_cte */
-Match(CONSTANTE);
-*presul = ProcesarCte();
+    case CONSTANTE_INT:
+      /* <primaria> -> CONSTANTE #procesar_cte */
+      Match(CONSTANTE_INT);
+      *presul = ProcesarCte(CONSTANTE_INT);
+      break;
+    case CONSTANTE_FLOAT:
+      Match(CONSTANTE_FLOAT);
+      *presul = ProcesarCte(CONSTANTE_FLOAT);
 break;
     case PARENIZQUIERDO:
       /* <primaria> -> PARENIZQUIERDO <expresion> PARENDERECHO */
@@ -314,10 +329,27 @@ sscanf(buffer, "%d", &reg.valor);
 return reg;
 }
 
+REG_EXPRESION ProcesarCte(TOKEN clase){
+  REG_EXPRESION reg;
+  reg.clase = clase;
+  strcpy(reg.nombre, buffer);
+
+  if (clase == CONSTANTE_INT) {
+    reg.tipo = T_ENTERO;
+    sscanf(buffer, "%d", &reg.valor_entero);
+    // reg.valor_real = (float) reg.valor_entero;
+  } else if (clase == CONSTANTE_FLOAT) {
+    reg.tipo = T_REAL;
+    sscanf(buffer, "%f", &reg.valor_real);
+    // reg.valor_entero = (int) reg.valor_real;
+  }
+  return reg;
+};
+
 REG_EXPRESION ProcesarId(void){
 /* Declara ID y construye el correspondiente registro semantico */
 REG_EXPRESION reg;
-Chequear(buffer);
+  Chequear(buffer,reg.tipo);
 reg.clase = ID;
 strcpy(reg.nombre, buffer);
 return reg;
@@ -330,12 +362,12 @@ return buffer;
 
 void Leer(REG_EXPRESION in){
 /* Genera la instruccion para leer */
-Generar("Read", in.nombre, "Entera", "");
+  Generar("Read", in.nombre, TipoDatoToString(in.tipo), "");
 }
 
 void Escribir(REG_EXPRESION out){
 /* Genera la instruccion para escribir */
-Generar("Write", Extraer(&out), "Entera", "");
+  Generar("Write", Extraer(&out), TipoDatoToString(out.tipo), "");
 }
 
 REG_EXPRESION GenInfijo(REG_EXPRESION e1, char * op, REG_EXPRESION e2){
@@ -345,16 +377,23 @@ static unsigned int numTemp = 1;
 char cadTemp[TAMLEX] ="Temp&";
 char cadNum[TAMLEX];
 char cadOp[TAMLEX];
+  
+  TIPO_DATO tipoResultado = (e1.tipo == T_REAL || e2.tipo == T_REAL) ? T_REAL : T_ENTERO;
+
   if(op[0] == '-') strcpy(cadOp, "Restar");
   if(op[0] == '+') strcpy(cadOp, "Sumar");
+  
 sprintf(cadNum, "%d", numTemp);
 numTemp++;
 strcat(cadTemp, cadNum);
-  if(e1.clase == ID) Chequear(Extraer(&e1));
-  if(e2.clase == ID) Chequear(Extraer(&e2));
-Chequear(cadTemp);
+  
+  if(e1.clase == ID) Chequear(Extraer(&e1), e1.tipo);
+  if(e2.clase == ID) Chequear(Extraer(&e2), e2.tipo);
+  
+  Chequear(cadTemp, tipoResultado);
 Generar(cadOp, Extraer(&e1), Extraer(&e2), cadTemp);
 strcpy(reg.nombre, cadTemp);
+  reg.tipo = tipoResultado;
 return reg;
 }
 /***************Funciones Auxiliares**********************************/
@@ -383,12 +422,12 @@ void ErrorSintactico(){
   printf("Error Sintactico\n");
 };
 
-void Generar(char * co, char * a, char * b, char * c){
+void Generar(char* co, char* a, char* b, char* c){
   /* Produce la salida de la instruccion para la MV por stdout */
   printf("%s %s%c%s%c%s\n", co, a, ',', b, ',', c);
 };
 
-char * Extraer(REG_EXPRESION * preg){
+char* Extraer(REG_EXPRESION* preg){
   /* Retorna la cadena del registro semantico */
   return preg->nombre;
 };
@@ -406,24 +445,25 @@ int Buscar(char * id, RegTS * TS, TOKEN * t){
   return 0;
 };
 
-void Colocar(char * id, RegTS * TS){
+void Colocar(char* id, RegTS* TS, TIPO_DATO tipo){
   /* Agrega un identificador a la TS */
-  int i = 4;
+  int i = 16;
   while (strcmp("$", TS[i].identifi)) i++;
   if (i < 999) {
     strcpy(TS[i].identifi, id);
     TS[i].t = ID;
+    TS[i].tipo = tipo;
     strcpy(TS[++i].identifi, "$");
   };
 };
 
-void Chequear(char * s){
+void Chequear(char* s, TIPO_DATO tipo){
   /* Si la cadena No esta en la Tabla de Simbolos la agrega,
   y si es el nombre de una variable genera la instruccion */
   TOKEN t;
   if(!Buscar(s, TS, &t)){
-    Colocar(s, TS);
-    Generar("Declara", s, "Entera", "");
+    Colocar(s, TS, tipo);
+    Generar("Declara", s, TipoDatoToString(tipo), "");
   };
 };
 
@@ -438,6 +478,7 @@ void Terminar(void){
 
 void Asignar(REG_EXPRESION izq, REG_EXPRESION der){
   /* Genera la instruccion para la asignacion */
+  Chequear(izq.nombre, der.tipo);
   Generar("Almacena", Extraer(&der), izq.nombre, "");
 };
 
