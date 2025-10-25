@@ -1,0 +1,109 @@
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
+
+#define NUMESTADOS 20
+#define NUMCOLS 16
+#define TAMLEX 32+1
+#define TAMNOM 20+1
+
+/******************DECLARACIONES GLOBALES*************************/
+extern FILE* in;
+
+typedef enum {
+  T_ENTERO,
+  T_REAL,
+  T_CARACTER,
+  T_DESCONOCIDO,
+} TIPO_DATO;
+
+typedef enum {
+  INICIO,
+  FIN,
+  LEER,
+  ESCRIBIR,
+  TIPO_INT,
+  TIPO_CHAR,
+  TIPO_FLOAT,
+  ID,
+  CONSTANTE_INT,
+  CONSTANTE_FLOAT,
+  PARENIZQUIERDO,
+  PARENDERECHO,
+  PUNTOYCOMA,
+  COMA,
+  ASIGNACION,
+  SUMA,
+  RESTA,
+  FDT,
+  ERRORLEXICO,
+  SI,
+  ENTONCES,
+  SINO,
+  FIN_SI,
+  MIENTRAS,
+  HACER,
+  FIN_MIENTRAS,
+  REPETIR,
+  HASTA,
+  OP_RELACIONAL,
+} TOKEN;
+
+typedef struct {
+  char identifi[TAMLEX];
+  TOKEN t;
+  TIPO_DATO tipo;
+} RegTS;
+
+typedef struct {
+  TOKEN clase;
+  char nombre[TAMLEX];
+  int valor_entero;
+  float valor_real;
+  TIPO_DATO tipo;
+} REG_EXPRESION;
+
+extern RegTS TS[1000];
+extern char buffer[TAMLEX]; //Preguntar si tiene sentido 'extern'
+extern TOKEN tokenActual;
+extern int flagToken;
+
+/**********************PROTOTIPOS DE FUNCIONES************************/
+// Fase léxica (Implementadas en 'scanner.c')
+TOKEN scanner();
+int columna(int c);
+int estadoFinal(int e);
+
+// Fase sintáctica (Implementadas en 'parser.c')
+void Objetivo(void);
+void Programa(void);
+void ListaSentencias(void);
+void Sentencia(void);
+void ListaIdentificadores(void);
+void Identificador(REG_EXPRESION* presul);
+void ListaExpresiones(void);
+void Expresion(REG_EXPRESION* presul);
+void Primaria(REG_EXPRESION* presul);
+void OperadorAditivo(char* presul);
+
+// Rutinas semánticas (Implementadas en 'parser.c')
+REG_EXPRESION ProcesarCte(TOKEN clase);
+REG_EXPRESION ProcesarId(void);
+char* ProcesarOp(void);
+void Leer(REG_EXPRESION in);
+void Escribir(REG_EXPRESION out);
+REG_EXPRESION GenInfijo(REG_EXPRESION e1, char* op, REG_EXPRESION e2);
+void Comenzar(void);
+void Terminar(void);
+void Asignar(REG_EXPRESION izq, REG_EXPRESION der);
+void Match(TOKEN t);
+TOKEN ProximoToken();
+void ErrorLexico();
+void ErrorSintactico();
+void Generar(char* co, char* a, char* b, char* c);
+char* Extraer(REG_EXPRESION* preg);
+int Buscar(char* id, RegTS* TS, TOKEN* t);
+void Colocar(char* id, RegTS* TS, TIPO_DATO tipo);
+void Chequear(char* s, TIPO_DATO tipo);
+char* TipoDatoToString(TIPO_DATO tipo);
