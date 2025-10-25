@@ -101,7 +101,7 @@ void ListaExpresiones(void);
 void Expresion(REG_EXPRESION * presul);
 void Primaria(REG_EXPRESION * presul);
 void OperadorAditivo(char * presul);
-REG_EXPRESION ProcesarCte(void);
+REG_EXPRESION ProcesarCte(TOKEN clase);
 REG_EXPRESION ProcesarId(void);
 char * ProcesarOp(void);
 void Leer(REG_EXPRESION in);
@@ -114,8 +114,8 @@ void ErrorSintactico();
 void Generar(char * co, char * a, char * b, char * c);
 char * Extraer(REG_EXPRESION * preg);
 int Buscar(char * id, RegTS * TS, TOKEN * t);
-void Colocar(char * id, RegTS * TS);
-void Chequear(char * s);
+void Colocar(char* id, RegTS * TS, TIPO_DATO tipo);
+void Chequear(char* s, TIPO_DATO tipo);
 void Comenzar(void);
 void Terminar(void);
 void Asignar(REG_EXPRESION izq, REG_EXPRESION der);
@@ -287,8 +287,8 @@ TOKEN tok = ProximoToken();
   switch(tok){
     case ID:
       /* <primaria> -> <identificador> */
-Identificador(presul);
-break;
+    Identificador(presul);
+    break;
     case CONSTANTE_INT:
       /* <primaria> -> CONSTANTE #procesar_cte */
       Match(CONSTANTE_INT);
@@ -319,15 +319,6 @@ strcpy(presul, ProcesarOp());
   else ErrorSintactico(t);
 }
 /**********************Rutinas Semanticas******************************/
-REG_EXPRESION ProcesarCte(void)
-{
-/* Convierte cadena que representa numero a numero entero y construye un registro semantico */
-REG_EXPRESION reg;
-reg.clase = CONSTANTE;
-strcpy(reg.nombre, buffer);
-sscanf(buffer, "%d", &reg.valor);
-return reg;
-}
 
 REG_EXPRESION ProcesarCte(TOKEN clase){
   REG_EXPRESION reg;
