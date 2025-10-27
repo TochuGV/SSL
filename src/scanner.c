@@ -1,4 +1,4 @@
-#include "micro.h"
+#include "../micro.h"
 
 FILE* in;
 RegTS TS[1000] = {

@@ -1,4 +1,4 @@
-#include "micro.h"
+#include "../micro.h"
 
 /***********PROCEDIMIENTOS DE ANÁLISIS SINTÁCTICO (PAS)******************/
 void Objetivo(void){
