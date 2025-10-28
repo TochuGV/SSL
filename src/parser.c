@@ -12,9 +12,38 @@ void Programa(void){
   /* <programa> -> #comenzar INICIO <listaSentencias> FIN */
   Comenzar();// invocacion a las rutinas semanticas, en la gramatica se coloca con #
   Match(INICIO);
-  //ListaDeclaraciones();
+  ListaDeclaraciones();
   ListaSentencias();
   Match(FIN);
+};
+
+void ListaDeclaraciones(void){
+  /* <listaDeclaraciones> -> { <Declaracion> } */
+  while(ProximoToken() == TIPO_INT || ProximoToken() == TIPO_CHAR || ProximoToken() == TIPO_FLOAT){
+    Declaracion();
+  };
+};
+
+void Declaracion(void){
+  /* <declaracion> -> <Tipo> <ListaIdentificadores> ; */
+  TOKEN tipo_token = ProximoToken();
+  TIPO_DATO tipo_semantico = T_DESCONOCIDO;
+
+  // 1. Determinar el TIPO_DATO (Semántica)
+  if (tipo_token == TIPO_CHAR) {
+    tipo_semantico = T_CARACTER;
+  } else if (tipo_token == TIPO_FLOAT) {
+    tipo_semantico = T_REAL;
+  } else if (tipo_token == TIPO_INT) {
+    tipo_semantico = T_ENTERO;
+  };
+
+  // 2. Consumir el token de tipo (Sintaxis)
+  Match(tipo_token);
+  // 3. Procesar la lista de IDs, pasándole el tipo para que sean registradas en la TS
+  ListaIdentificadores(tipo_semantico);
+  // 4. Consumir el final
+  Match(PUNTOYCOMA);
 };
 
 void ListaSentencias(void){
@@ -49,7 +78,7 @@ void Sentencia(void){
       /* <sentencia> -> LEER ( <listaIdentificadores> ) */
       Match(LEER);
       Match(PARENIZQUIERDO);
-      ListaIdentificadores();
+      ListaIdentificadores(T_DESCONOCIDO); // Se envía este parámetro para que se comporte como LECTURA.
       Match(PARENDERECHO);
       Match(PUNTOYCOMA);
       break;
@@ -66,20 +95,34 @@ void Sentencia(void){
   };
 };
 
-void ListaIdentificadores(void){
+void ListaIdentificadores(TIPO_DATO tipo_asociado){
   /* <listaIdentificadores> -> <identificador> #leer_id {COMA <identificador> #leer_id} */
   TOKEN t;
   REG_EXPRESION reg;
   Identificador(&reg);
-  Leer(reg);
+
+  if (tipo_asociado != T_DESCONOCIDO) { // Si es distinto, es porque estamos declarando.
+    reg.tipo = tipo_asociado;
+    Chequear(reg.nombre, reg.tipo); // Se registra el ID con el tipo de dato.
+  } else {
+    // Si no se está declarando, se está leyendo.
+    Leer(reg);
+  };
+
   for(t = ProximoToken(); t == COMA; t = ProximoToken()){
     Match(COMA);
     Identificador(&reg);
+    if (tipo_asociado != T_DESCONOCIDO) { // Si es distinto, es porque estamos declarando.
+      reg.tipo = tipo_asociado;
+      Chequear(reg.nombre, reg.tipo); // Se registra el ID con el tipo de dato.
+    } else {
+    // Si no se está declarando, se está leyendo.
     Leer(reg);
+    };
   };
 };
 
-void Identificador(REG_EXPRESION * presul){
+void Identificador(REG_EXPRESION* presul){
   /* <identificador> -> ID #procesar_id */
   Match(ID);
   *presul = ProcesarId();
@@ -98,7 +141,7 @@ void ListaExpresiones(void){
   };
 };
 
-void Expresion(REG_EXPRESION * presul){
+void Expresion(REG_EXPRESION* presul){
   /* <expresion> -> <primaria> { <operadorAditivo> <primaria> #gen_infijo } */
   REG_EXPRESION operandoIzq, operandoDer;
   char op[TAMLEX];
@@ -112,7 +155,7 @@ void Expresion(REG_EXPRESION * presul){
   *presul = operandoIzq;
 };
 
-void Primaria(REG_EXPRESION * presul){
+void Primaria(REG_EXPRESION* presul){
   TOKEN tok = ProximoToken();
   switch(tok){
     case ID:
@@ -139,7 +182,7 @@ void Primaria(REG_EXPRESION * presul){
   };
 };
 
-void OperadorAditivo(char * presul){
+void OperadorAditivo(char* presul){
   /* <operadorAditivo> -> SUMA #procesar_op | RESTA #procesar_op */
   TOKEN t = ProximoToken();
   if (t == SUMA || t == RESTA) {
@@ -168,9 +211,25 @@ REG_EXPRESION ProcesarCte(TOKEN clase){
 REG_EXPRESION ProcesarId(void){
   /* Declara ID y construye el correspondiente registro semantico */
   REG_EXPRESION reg;
-  Chequear(buffer,reg.tipo);
+  TOKEN t;
+  TIPO_DATO tipo_encontrado = T_DESCONOCIDO;
+
+  // Buscar el identificador en la TS
+  if (Buscar(buffer, TS, &t)) {
+    // Si existe, recuperar su tipo de la TS
+    int i = 0;
+    while (strcmp("$", TS[i].identifi)) {
+      if (!strcmp(buffer, TS[i].identifi)) {
+        tipo_encontrado = TS[i].tipo;
+        break;
+      };
+      i++;
+    };
+  };
+
   reg.clase = ID;
   strcpy(reg.nombre, buffer);
+  reg.tipo = tipo_encontrado; // Asociar tipo semántico correcto
   return reg;
 };
 
@@ -189,7 +248,7 @@ void Escribir(REG_EXPRESION out){
   Generar("Write", Extraer(&out), TipoDatoToString(out.tipo), "");
 };
 
-REG_EXPRESION GenInfijo(REG_EXPRESION e1, char * op, REG_EXPRESION e2){
+REG_EXPRESION GenInfijo(REG_EXPRESION e1, char* op, REG_EXPRESION e2){
   /* Genera la instruccion para una operacion infija y construye un registro semantico con el resultado */
   REG_EXPRESION reg;
   static unsigned int numTemp = 1;
@@ -303,8 +362,8 @@ void Chequear(char* s, TIPO_DATO tipo){
 };
 
 char* TipoDatoToString(TIPO_DATO tipo){
-  if (tipo == T_REAL) return "Real";
-  if (tipo == T_ENTERO) return "Entero";
+  if (tipo == T_ENTERO) return "Entera";
   if (tipo == T_CARACTER) return "Caracter";
-  return "Desconocido";
+  if (tipo == T_REAL) return "Real";
+  return "Desconocida";
 };

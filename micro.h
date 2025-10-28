@@ -80,12 +80,14 @@ void Objetivo(void);
 void Programa(void);
 void ListaSentencias(void);
 void Sentencia(void);
-void ListaIdentificadores(void);
+void ListaIdentificadores(TIPO_DATO tipo_asociado);
 void Identificador(REG_EXPRESION* presul);
 void ListaExpresiones(void);
 void Expresion(REG_EXPRESION* presul);
 void Primaria(REG_EXPRESION* presul);
 void OperadorAditivo(char* presul);
+void ListaDeclaraciones(void);
+void Declaracion(void);
 
 // Rutinas semánticas (Implementadas en 'parser.c')
 REG_EXPRESION ProcesarCte(TOKEN clase);
