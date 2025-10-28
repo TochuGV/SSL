@@ -30,12 +30,19 @@ void Declaracion(void){
   TIPO_DATO tipo_semantico = T_DESCONOCIDO;
 
   // 1. Determinar el TIPO_DATO (Semántica)
-  if (tipo_token == TIPO_CHAR) {
-    tipo_semantico = T_CARACTER;
-  } else if (tipo_token == TIPO_FLOAT) {
-    tipo_semantico = T_REAL;
-  } else if (tipo_token == TIPO_INT) {
-    tipo_semantico = T_ENTERO;
+  switch (tipo_token) {
+    case TIPO_CHAR:
+      tipo_semantico = T_CARACTER;
+      break;
+    case TIPO_FLOAT:
+      tipo_semantico = T_REAL;
+      break;
+    case TIPO_INT:
+      tipo_semantico = T_ENTERO;
+      break;
+    default:
+      tipo_semantico = T_DESCONOCIDO;
+      break;
   };
 
   // 2. Consumir el token de tipo (Sintaxis)
