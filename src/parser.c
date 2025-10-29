@@ -63,7 +63,7 @@ void ListaSentencias(void){
       case ESCRIBIR:
       case MIENTRAS:
       case SI:
-     // case REPETIR_HASTA:
+      case HASTA:
         Sentencia();
         break;
       default: 
@@ -100,7 +100,9 @@ void Sentencia(void){
       Match(PARENDERECHO);
       Match(PUNTOYCOMA);
       break;
-    //case MIENTRAS:
+    case MIENTRAS:
+    SentenciaMientras();
+    break;
     case SI:
       SentenciaSi();
       break;
@@ -513,4 +515,38 @@ REG_EXPRESION GenLogico(REG_EXPRESION e1, char* op, REG_EXPRESION e2){
   strcpy(reg.nombre, cadTemp);
   reg.tipo = T_ENTERO;
   return reg;
+};
+void SentenciaMientras(void) {
+    char *etiquetaInicio, *etiquetaFin;
+    REG_EXPRESION condicion;
+    TOKEN tok;
+
+    Match(MIENTRAS);
+
+    etiquetaInicio = NuevaEtiqueta();
+    GenerarEtiqueta(etiquetaInicio); // Marca el comienzo del bucle
+
+    Match(PARENIZQUIERDO);
+    Condicion(&condicion);
+    Match(PARENDERECHO);
+
+    etiquetaFin = NuevaEtiqueta();
+    Generar("BF", Extraer(&condicion), etiquetaFin, ""); // Si la condición es falsa, salta al fin
+
+    Match(HACER);
+
+    // Cuerpo del bucle
+    tok = ProximoToken();
+    while (tok != FIN_MIENTRAS && tok != FDT) {
+        Sentencia();       // Consume el tokenActual
+        tok = ProximoToken(); // Actualiza tok para la siguiente iteración
+    }
+
+    Generar("BI", etiquetaInicio, "", ""); // Vuelve al inicio
+    GenerarEtiqueta(etiquetaFin); // Fin del bucle
+
+    Match(FIN_MIENTRAS);
+
+    free(etiquetaInicio);
+    free(etiquetaFin);
 };
