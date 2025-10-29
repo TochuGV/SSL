@@ -61,6 +61,9 @@ void ListaSentencias(void){
       case ID:
       case LEER:
       case ESCRIBIR:
+      case MIENTRAS:
+      case SI:
+     // case REPETIR_HASTA:
         Sentencia();
         break;
       default: 
@@ -97,6 +100,11 @@ void Sentencia(void){
       Match(PARENDERECHO);
       Match(PUNTOYCOMA);
       break;
+    //case MIENTRAS:
+    case SI:
+      SentenciaSi();
+      break;
+    //case REPETIR_HASTA:
     default:
       return;
   };
@@ -313,6 +321,28 @@ TOKEN ProximoToken(){
     };
   };
   return tokenActual;
+  /*
+  if (!flagToken) {
+    tokenActual = scanner();
+    if(tokenActual == ERRORLEXICO) {
+      ErrorLexico();
+      // opcional: mostrar buffer para ver qué produjo el error
+      fprintf(stderr, "DEBUG scanner -> ERRORLEXICO, buffer='%s'\n", buffer);
+    }
+    flagToken = 1;
+
+    // Si es ID, la búsqueda puede convertirlo en palabra reservada
+    if (tokenActual == ID) {
+      // Guardamos el token devuelto por la TS en tokenActual
+      Buscar(buffer, TS, &tokenActual);
+    }
+
+    // DEBUG: imprimir qué token fue producido y cuál es su lexema
+    // Usamos stderr para no mezclar con la salida normal del compilador (stdout)
+    fprintf(stderr, "DEBUG ProximoToken -> token=%d lexema='%s'\n", tokenActual, buffer);
+  }
+  return tokenActual;
+  */
 };
 
 void ErrorLexico(){
@@ -373,4 +403,114 @@ char* TipoDatoToString(TIPO_DATO tipo){
   if (tipo == T_CARACTER) return "Caracter";
   if (tipo == T_REAL) return "Real";
   return "Desconocida";
+};
+
+char* NuevaEtiqueta(void){
+  static unsigned int numEtiqueta = 1;
+  char cadTemp[TAMLEX];
+  sprintf(cadTemp, "L%d", numEtiqueta++);
+  return strdup(cadTemp);
+};
+
+void GenerarEtiqueta(char* e){
+  printf("%s:\n", e);
+};
+
+
+void Condicion(REG_EXPRESION* presul){
+  REG_EXPRESION izq, der;
+  char op[TAMLEX];
+
+  Expresion(&izq);
+  
+  // Copiamos el operador relacional del buffer ANTES de hacer Match
+  
+  strcpy(op, ProcesarOp());
+
+  Match(OP_RELACIONAL);
+  
+  printf("%s\n", op);
+
+  Expresion(&der);
+
+  *presul = GenLogico(izq, op, der);
+};
+
+void SentenciaSi(void){
+  /* <sentencia_si> -> SI ( <condición> ) ENTONCES <listaSentencias> [SINO <listaSentencias>] FIN_SI ; */
+  REG_EXPRESION cond;
+  char* etiqueta_sino = NuevaEtiqueta();
+  char* etiqueta_fin  = NuevaEtiqueta();
+
+  // Consumir 'SI' y los paréntesis de la condición
+  Match(SI);
+  Match(PARENIZQUIERDO);
+  Condicion(&cond);
+  Match(PARENDERECHO);
+
+  // Consumir 'ENTONCES' y generar salto condicional
+  Match(ENTONCES);
+  Generar("Bf", cond.nombre, "", etiqueta_sino);
+
+  // Cuerpo del SI (verdadero)
+  ListaSentencias();
+
+  // Procesar SINO (opcional)
+  if(ProximoToken() == SINO){
+    Generar("Br", "", "", etiqueta_fin);    // Salto al final del SI
+    GenerarEtiqueta(etiqueta_sino);         // Etiqueta del SINO
+    Match(SINO);
+    ListaSentencias();
+    GenerarEtiqueta(etiqueta_fin);          // Fin del SINO
+  } else {
+    //printf("%s", "holacomoestas");
+    GenerarEtiqueta(etiqueta_sino);         // Etiqueta del final si no hay SINO
+    //printf("%s", "chaussl");
+  }
+
+  // Consumir FIN_SI y punto y coma
+  //printf("%s", "matchea?");
+  Match(FIN_SI);
+  //printf("%s", "cavani");
+
+  free(etiqueta_sino);
+  free(etiqueta_fin);
+}
+
+REG_EXPRESION GenLogico(REG_EXPRESION e1, char* op, REG_EXPRESION e2){
+  /* Genera código 3AC para comparación y retorna el temporal con el resultado */
+  REG_EXPRESION reg;
+  static unsigned int numTempLogico = 1;
+  char cadTemp[TAMLEX] = "TempLog&";
+  char cadNum[TAMLEX];
+  char cadOp[TAMLEX];
+
+  printf("%s\n", op);
+
+  // Determinar la instrucción 3AC según el operador relacional
+  if (!strcmp(op, "==")) strcpy(cadOp, "ComparaIGUAL");
+  else if (!strcmp(op, "!=")) strcpy(cadOp, "ComparaDISTINTO");
+  else if (!strcmp(op, ">")) strcpy(cadOp, "ComparaMAYOR");
+  else if (!strcmp(op, "<")) strcpy(cadOp, "ComparaMENOR");
+  else if (!strcmp(op, ">=")) strcpy(cadOp, "ComparaMAYORIGUAL");
+  else if (!strcmp(op, "<=")) strcpy(cadOp, "ComparaMENORIGUAL");
+  else {
+    printf("ERROR SEMANTICO: Operador relacional desconocido en GenLogico: '%s'\n", op);
+    strcpy(cadOp, "ComparaDESCONOCIDO");
+  }
+
+  // Crear un nuevo temporal
+  sprintf(cadNum, "%d", numTempLogico++);
+  strcat(cadTemp, cadNum);
+
+  // Declarar el temporal y generar la instrucción
+  Chequear(cadTemp, T_ENTERO); // Resultado lógico es siempre entero (0 o 1)
+  if(e1.clase == ID) Chequear(Extraer(&e1), e1.tipo);
+  if(e2.clase == ID) Chequear(Extraer(&e2), e2.tipo);
+
+  Generar(cadOp, Extraer(&e1), Extraer(&e2), cadTemp);
+
+  strcpy(reg.nombre, cadTemp);
+  reg.tipo = T_ENTERO;
+  return reg;
 };
