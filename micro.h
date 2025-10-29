@@ -3,7 +3,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-#define NUMESTADOS 20
+#define NUMESTADOS 21
 #define NUMCOLS 16
 #define TAMLEX 32+1
 #define TAMNOM 20+1
@@ -88,6 +88,8 @@ void Primaria(REG_EXPRESION* presul);
 void OperadorAditivo(char* presul);
 void ListaDeclaraciones(void);
 void Declaracion(void);
+void SentenciaSi(void);
+void Condicion(REG_EXPRESION* presul);
 
 // Rutinas semánticas (Implementadas en 'parser.c')
 REG_EXPRESION ProcesarCte(TOKEN clase);
@@ -109,3 +111,6 @@ int Buscar(char* id, RegTS* TS, TOKEN* t);
 void Colocar(char* id, RegTS* TS, TIPO_DATO tipo);
 void Chequear(char* s, TIPO_DATO tipo);
 char* TipoDatoToString(TIPO_DATO tipo);
+char* NuevaEtiqueta(void);
+void GenerarEtiqueta(char* e);
+REG_EXPRESION GenLogico(REG_EXPRESION e1, char* op, REG_EXPRESION e2);

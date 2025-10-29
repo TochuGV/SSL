@@ -74,7 +74,7 @@ TOKEN scanner(){
   */
 
   int tabla[NUMESTADOS][NUMCOLS] = { 
-    /* 0 */ { 1, 3, 5, 6, 7, 8, 9, 10, 11, 17, 13, 0, 14, 17, 18, 14 }, 
+    /* 0 */ { 1, 3, 5, 6, 7, 8, 9, 10, 11, 20, 13, 0, 14, 17, 18, 14 }, 
     /* 1 */ { 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2 },       // ID en progreso
     /* 2 */ { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }, 
     /* 3 */ { 4, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 15, 4, 4, 4 },      // INT: en '.' va a 15
@@ -97,14 +97,18 @@ TOKEN scanner(){
     // ESTADOS NUEVOS (Operadores Relacionales)
     /* 17 */{ 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19 }, // Op. Relacional: en '=' va a 19 (ej: <=)
     /* 18 */{ 14, 14, 14, 14, 14, 14, 14, 14, 14, 19, 14, 14, 14, 14, 14, 14 }, // Lookahead '!' solo acepta '=' para ir a 19 (ej: !=)
-    /* 19 */{ 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }  // Final Op. Relacional
+    /* 19 */{ 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },  // Final Op. Relacional
+    /* 20 */ { 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19 }, // "=="
   };
 
+  //memset(buffer, 0, sizeof(buffer));
   int car;
   int col;
   int estado = 0;
   int i = 0;
-
+  
+  memset(buffer, 0, sizeof(buffer));
+  
   do {
     car = fgetc(in);
     col = columna(car);
@@ -136,12 +140,16 @@ TOKEN scanner(){
         buffer[i-1] = '\0';
       };
       return CONSTANTE_FLOAT;
-    case 17:
-    case 19:
-      if (col != 11) {
+    case 17: // < o >
+          buffer[i] = '\0';
+      // Si lo que sigue no pertenece al siguiente token, devolverlo
+      if (car != EOF && !isspace(car) && car != ';' && car != ')' && car != '(')
         ungetc(car, in);
-        buffer[i-1] = '\0';
-      };
+      return OP_RELACIONAL;
+    case 19: // >= o <= o == o !=
+    case 20:
+      buffer[i] = '\0';
+      // No devolver el carácter, porque ya fue consumido por lookahead.
       return OP_RELACIONAL;
     case 5: return SUMA;
     case 6: return RESTA;
@@ -158,12 +166,12 @@ TOKEN scanner(){
 };
 
 int estadoFinal(int e){
-  if(e == 0 || e == 1 || e == 3 || e == 11 || e == 14 || e == 15 || e == 18) return 0;
+  if(e == 0 || e == 1 || e == 3 || e == 11 || e == 15 || e == 17 || e == 18 || e == 20) return 0;
   return 1;
 };
 
 int columna(int c){
-  if (isalpha(c)) return 0;
+  if (isalpha(c) || c == '_') return 0;
   if (isdigit(c)) return 1;
   if (c == '+') return 2;
   if (c == '-') return 3;

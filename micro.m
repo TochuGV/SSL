@@ -1,12 +1,7 @@
 inicio
-
-int a;
-int b;
-int c;
-
-leer(a);
-leer(b);
-c:=a+b;
-escribir(c);
-
+    int x;
+    x := 5;
+    si (x <= 3) entonces
+        escribir(x);
+    fin_si
 fin
