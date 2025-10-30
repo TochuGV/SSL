@@ -1,6 +1,8 @@
 inicio
   int a;
   a := 5;
-  escribir(a);
-  leer(a);
+  repetir
+    a := a + 1;
+    escribir(a);
+  hasta (a==10)
 fin
