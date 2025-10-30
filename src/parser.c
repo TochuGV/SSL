@@ -304,6 +304,15 @@ void Terminar(void){
 
 void Asignar(REG_EXPRESION izq, REG_EXPRESION der){
   /* Genera la instruccion para la asignacion */
+  if (izq.tipo == T_DESCONOCIDO || der.tipo == T_DESCONOCIDO) 
+    ErrorSemantico("Uso de identificador no declarado o tipo desconocido.");
+  if (izq.tipo != der.tipo) {
+    char mensaje[128];
+    sprintf(mensaje, "Asignación incompatible (%s := %s)", 
+      TipoDatoToString(izq.tipo), 
+      TipoDatoToString(der.tipo));
+    ErrorSemantico(mensaje);
+  };
   Chequear(izq.nombre, der.tipo);
   Generar("Almacena", Extraer(&der), izq.nombre, "");
 };
@@ -321,10 +330,10 @@ TOKEN ProximoToken(){
     flagToken = 1;
     if (tokenActual == ID) {
       Buscar(buffer, TS, &tokenActual);
-    };
-  };
-  return tokenActual;
-  /*
+      };
+      };
+      return tokenActual;
+      /*
   if (!flagToken) {
     tokenActual = scanner();
     if(tokenActual == ERRORLEXICO) {
@@ -333,13 +342,13 @@ TOKEN ProximoToken(){
       fprintf(stderr, "DEBUG scanner -> ERRORLEXICO, buffer='%s'\n", buffer);
     }
     flagToken = 1;
-
+    
     // Si es ID, la búsqueda puede convertirlo en palabra reservada
     if (tokenActual == ID) {
       // Guardamos el token devuelto por la TS en tokenActual
       Buscar(buffer, TS, &tokenActual);
     }
-
+    
     // DEBUG: imprimir qué token fue producido y cuál es su lexema
     // Usamos stderr para no mezclar con la salida normal del compilador (stdout)
     fprintf(stderr, "DEBUG ProximoToken -> token=%d lexema='%s'\n", tokenActual, buffer);
@@ -354,6 +363,11 @@ void ErrorLexico(){
 
 void ErrorSintactico(){
   printf("Error Sintactico\n");
+};
+
+void ErrorSemantico(const char* mensaje) {
+  fprintf(stderr, "Error Semantico: %s\n", mensaje);
+  exit(1); // Termina el compilador
 };
 
 void Generar(char* co, char* a, char* b, char* c){
@@ -423,20 +437,51 @@ void GenerarEtiqueta(char* e){
 void Condicion(REG_EXPRESION* presul){
   REG_EXPRESION izq, der;
   char op[TAMLEX];
-
   Expresion(&izq);
-  
   // Copiamos el operador relacional del buffer ANTES de hacer Match
-  
   strcpy(op, ProcesarOp());
-
   Match(OP_RELACIONAL);
-  
-  printf("%s\n", op);
-
+  //printf("%s\n", op);
   Expresion(&der);
-
   *presul = GenLogico(izq, op, der);
+};
+
+REG_EXPRESION GenLogico(REG_EXPRESION e1, char* op, REG_EXPRESION e2){
+  /* Genera código 3AC para comparación y retorna el temporal con el resultado */
+  REG_EXPRESION reg;
+  static unsigned int numTempLogico = 1;
+  char cadTemp[TAMLEX] = "TempLog&";
+  char cadNum[TAMLEX];
+  char cadOp[TAMLEX];
+
+  //printf("%s\n", op);
+
+  // Determinar la instrucción 3AC según el operador relacional
+  if (!strcmp(op, "==")) strcpy(cadOp, "ComparaIGUAL");
+  else if (!strcmp(op, "!=")) strcpy(cadOp, "ComparaDISTINTO");
+  else if (!strcmp(op, ">")) strcpy(cadOp, "ComparaMAYOR");
+  else if (!strcmp(op, "<")) strcpy(cadOp, "ComparaMENOR");
+  else if (!strcmp(op, ">=")) strcpy(cadOp, "ComparaMAYORIGUAL");
+  else if (!strcmp(op, "<=")) strcpy(cadOp, "ComparaMENORIGUAL");
+  else {
+    printf("ERROR SEMANTICO: Operador relacional desconocido en GenLogico: '%s'\n", op);
+    strcpy(cadOp, "ComparaDESCONOCIDO");
+  }
+
+  // Crear un nuevo temporal
+  sprintf(cadNum, "%d", numTempLogico++);
+  strcat(cadTemp, cadNum);
+
+  // Declarar el temporal y generar la instrucción
+  Chequear(cadTemp, T_ENTERO); // Resultado lógico es siempre entero (0 o 1)
+  if(e1.clase == ID) Chequear(Extraer(&e1), e1.tipo);
+  if(e2.clase == ID) Chequear(Extraer(&e2), e2.tipo);
+
+  Generar(cadOp, Extraer(&e1), Extraer(&e2), cadTemp);
+
+  strcpy(reg.nombre, cadTemp);
+  reg.tipo = T_ENTERO;
+  return reg;
 };
 
 void SentenciaSi(void){
@@ -466,56 +511,14 @@ void SentenciaSi(void){
     ListaSentencias();
     GenerarEtiqueta(etiqueta_fin);          // Fin del SINO
   } else {
-    //printf("%s", "holacomoestas");
     GenerarEtiqueta(etiqueta_sino);         // Etiqueta del final si no hay SINO
-    //printf("%s", "chaussl");
-  }
+  };
 
-  // Consumir FIN_SI y punto y coma
-  //printf("%s", "matchea?");
+  // Consumir FIN_SI
   Match(FIN_SI);
-  //printf("%s", "cavani");
 
   free(etiqueta_sino);
   free(etiqueta_fin);
-}
-
-REG_EXPRESION GenLogico(REG_EXPRESION e1, char* op, REG_EXPRESION e2){
-  /* Genera código 3AC para comparación y retorna el temporal con el resultado */
-  REG_EXPRESION reg;
-  static unsigned int numTempLogico = 1;
-  char cadTemp[TAMLEX] = "TempLog&";
-  char cadNum[TAMLEX];
-  char cadOp[TAMLEX];
-
-  printf("%s\n", op);
-
-  // Determinar la instrucción 3AC según el operador relacional
-  if (!strcmp(op, "==")) strcpy(cadOp, "ComparaIGUAL");
-  else if (!strcmp(op, "!=")) strcpy(cadOp, "ComparaDISTINTO");
-  else if (!strcmp(op, ">")) strcpy(cadOp, "ComparaMAYOR");
-  else if (!strcmp(op, "<")) strcpy(cadOp, "ComparaMENOR");
-  else if (!strcmp(op, ">=")) strcpy(cadOp, "ComparaMAYORIGUAL");
-  else if (!strcmp(op, "<=")) strcpy(cadOp, "ComparaMENORIGUAL");
-  else {
-    printf("ERROR SEMANTICO: Operador relacional desconocido en GenLogico: '%s'\n", op);
-    strcpy(cadOp, "ComparaDESCONOCIDO");
-  }
-
-  // Crear un nuevo temporal
-  sprintf(cadNum, "%d", numTempLogico++);
-  strcat(cadTemp, cadNum);
-
-  // Declarar el temporal y generar la instrucción
-  Chequear(cadTemp, T_ENTERO); // Resultado lógico es siempre entero (0 o 1)
-  if(e1.clase == ID) Chequear(Extraer(&e1), e1.tipo);
-  if(e2.clase == ID) Chequear(Extraer(&e2), e2.tipo);
-
-  Generar(cadOp, Extraer(&e1), Extraer(&e2), cadTemp);
-
-  strcpy(reg.nombre, cadTemp);
-  reg.tipo = T_ENTERO;
-  return reg;
 };
 
 void SentenciaMientras(void) {
@@ -554,7 +557,7 @@ void SentenciaMientras(void) {
 };
 
 void SentenciaRepetir(void) {
-  char *etiquetaInicio, *etiquetaFin;
+  char *etiquetaInicio;
   REG_EXPRESION condicion;
   TOKEN tok;
 
@@ -562,9 +565,18 @@ void SentenciaRepetir(void) {
 
   etiquetaInicio = NuevaEtiqueta();
   GenerarEtiqueta(etiquetaInicio); // Marca el inicio del bucle
-  Match(PARENIZQUIERDO);
 
   // Ejecuta el cuerpo del repetir al menos una vez
+  do {
+    Sentencia();
+    tok = ProximoToken();
+
+    if (tok == PUNTOYCOMA) {
+      Match(PUNTOYCOMA);
+      tok = ProximoToken();
+    }
+  } while (tok != HASTA && tok != FDT);
+  /*
   tok = ProximoToken();
   while (tok != HASTA && tok != FDT) {
     Sentencia();
@@ -575,6 +587,7 @@ void SentenciaRepetir(void) {
     tok = ProximoToken();
   };
   Match(PARENDERECHO);
+  */
 
   Match(HASTA);
   Match(PARENIZQUIERDO);
@@ -583,11 +596,5 @@ void SentenciaRepetir(void) {
 
   // Si la condición es falsa, repetir el bucle
   Generar("Bf", Extraer(&condicion), etiquetaInicio, "");
-
-  // Fin del repetir
-  etiquetaFin = NuevaEtiqueta();
-  GenerarEtiqueta(etiquetaFin);
-
   free(etiquetaInicio);
-  free(etiquetaFin);
 };

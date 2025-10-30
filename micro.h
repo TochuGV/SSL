@@ -105,6 +105,7 @@ void Match(TOKEN t);
 TOKEN ProximoToken();
 void ErrorLexico();
 void ErrorSintactico();
+void ErrorSemantico(const char* mensaje);
 void Generar(char* co, char* a, char* b, char* c);
 char* Extraer(REG_EXPRESION* preg);
 int Buscar(char* id, RegTS* TS, TOKEN* t);
