@@ -63,7 +63,7 @@ void ListaSentencias(void){
       case ESCRIBIR:
       case MIENTRAS:
       case SI:
-      case HASTA:
+      case REPETIR:
         Sentencia();
         break;
       default: 
@@ -101,12 +101,13 @@ void Sentencia(void){
       Match(PUNTOYCOMA);
       break;
     case MIENTRAS:
-    SentenciaMientras();
-    break;
+      SentenciaMientras();
+      break;
     case SI:
       SentenciaSi();
       break;
-    //case REPETIR_HASTA:
+    case REPETIR:
+      SentenciaRepetir();
     default:
       return;
   };
@@ -516,37 +517,77 @@ REG_EXPRESION GenLogico(REG_EXPRESION e1, char* op, REG_EXPRESION e2){
   reg.tipo = T_ENTERO;
   return reg;
 };
+
 void SentenciaMientras(void) {
-    char *etiquetaInicio, *etiquetaFin;
-    REG_EXPRESION condicion;
-    TOKEN tok;
+  char *etiquetaInicio, *etiquetaFin;
+  REG_EXPRESION condicion;
+  TOKEN tok;
 
-    Match(MIENTRAS);
+  Match(MIENTRAS);
 
-    etiquetaInicio = NuevaEtiqueta();
-    GenerarEtiqueta(etiquetaInicio); // Marca el comienzo del bucle
+  etiquetaInicio = NuevaEtiqueta();
+  GenerarEtiqueta(etiquetaInicio); // Marca el comienzo del bucle
 
-    Match(PARENIZQUIERDO);
-    Condicion(&condicion);
-    Match(PARENDERECHO);
+  Match(PARENIZQUIERDO);
+  Condicion(&condicion);
+  Match(PARENDERECHO);
 
-    etiquetaFin = NuevaEtiqueta();
-    Generar("BF", Extraer(&condicion), etiquetaFin, ""); // Si la condición es falsa, salta al fin
+  etiquetaFin = NuevaEtiqueta();
+  Generar("Bf", Extraer(&condicion), etiquetaFin, ""); // Si la condición es falsa, salta al fin
 
-    Match(HACER);
+  Match(HACER);
 
-    // Cuerpo del bucle
+  // Cuerpo del bucle
+  tok = ProximoToken();
+  while (tok != FIN_MIENTRAS && tok != FDT) {
+    Sentencia();       // Consume el tokenActual
+    tok = ProximoToken(); // Actualiza tok para la siguiente iteración
+  };
+
+  Generar("Bi", etiquetaInicio, "", ""); // Vuelve al inicio
+  GenerarEtiqueta(etiquetaFin); // Fin del bucle
+
+  Match(FIN_MIENTRAS);
+
+  free(etiquetaInicio);
+  free(etiquetaFin);
+};
+
+void SentenciaRepetir(void) {
+  char *etiquetaInicio, *etiquetaFin;
+  REG_EXPRESION condicion;
+  TOKEN tok;
+
+  Match(REPETIR);
+
+  etiquetaInicio = NuevaEtiqueta();
+  GenerarEtiqueta(etiquetaInicio); // Marca el inicio del bucle
+  Match(PARENIZQUIERDO);
+
+  // Ejecuta el cuerpo del repetir al menos una vez
+  tok = ProximoToken();
+  while (tok != HASTA && tok != FDT) {
+    Sentencia();
     tok = ProximoToken();
-    while (tok != FIN_MIENTRAS && tok != FDT) {
-        Sentencia();       // Consume el tokenActual
-        tok = ProximoToken(); // Actualiza tok para la siguiente iteración
-    }
 
-    Generar("BI", etiquetaInicio, "", ""); // Vuelve al inicio
-    GenerarEtiqueta(etiquetaFin); // Fin del bucle
+    // Permitir múltiples sentencias separadas
+    while (tok == PUNTOYCOMA)
+    tok = ProximoToken();
+  };
+  Match(PARENDERECHO);
 
-    Match(FIN_MIENTRAS);
+  Match(HASTA);
+  Match(PARENIZQUIERDO);
+  Condicion(&condicion);
+  Match(PARENDERECHO);
 
-    free(etiquetaInicio);
-    free(etiquetaFin);
+  // Si la condición es falsa, repetir el bucle
+  Generar("Bf", Extraer(&condicion), etiquetaInicio, "");
+
+  // Fin del repetir
+  etiquetaFin = NuevaEtiqueta();
+  GenerarEtiqueta(etiquetaFin);
+
+  free(etiquetaInicio);
+  free(etiquetaFin);
 };

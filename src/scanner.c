@@ -187,4 +187,4 @@ int columna(int c){
   if (c == '<' || c == '>') return 13;
   if (c == '!') return 14;
   return 15;
-}
+};

@@ -115,3 +115,4 @@ char* NuevaEtiqueta(void);
 void GenerarEtiqueta(char* e);
 REG_EXPRESION GenLogico(REG_EXPRESION e1, char* op, REG_EXPRESION e2);
 void SentenciaMientras(void);
+void SentenciaRepetir(void);
