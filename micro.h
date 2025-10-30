@@ -3,8 +3,8 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-#define NUMESTADOS 21
-#define NUMCOLS 16
+#define NUMESTADOS 24
+#define NUMCOLS 17
 #define TAMLEX 32+1
 #define TAMNOM 20+1
 
@@ -29,6 +29,7 @@ typedef enum {
   ID,
   CONSTANTE_INT,
   CONSTANTE_FLOAT,
+  CONSTANTE_CHAR,
   PARENIZQUIERDO,
   PARENDERECHO,
   PUNTOYCOMA,

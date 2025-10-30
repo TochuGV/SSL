@@ -189,6 +189,10 @@ void Primaria(REG_EXPRESION* presul){
       Match(CONSTANTE_FLOAT);
       *presul = ProcesarCte(CONSTANTE_FLOAT);
       break;
+    case CONSTANTE_CHAR:
+      Match(CONSTANTE_CHAR);
+      *presul = ProcesarCte(CONSTANTE_CHAR);
+      break;
     case PARENIZQUIERDO:
       /* <primaria> -> PARENIZQUIERDO <expresion> PARENDERECHO */
       Match(PARENIZQUIERDO);
@@ -222,6 +226,9 @@ REG_EXPRESION ProcesarCte(TOKEN clase){
     reg.tipo = T_REAL;
     sscanf(buffer, "%f", &reg.valor_real);
     // reg.valor_entero = (int) reg.valor_real;
+  } else if (clase == CONSTANTE_CHAR) {
+    reg.tipo = T_CARACTER;
+    reg.valor_entero = buffer[1];
   };
   return reg;
 };
@@ -308,7 +315,7 @@ void Asignar(REG_EXPRESION izq, REG_EXPRESION der){
     ErrorSemantico("Uso de identificador no declarado o tipo desconocido.");
   if (izq.tipo != der.tipo) {
     char mensaje[128];
-    sprintf(mensaje, "Asignación incompatible (%s := %s)", 
+    sprintf(mensaje, "Asignacion incompatible (%s := %s)", 
       TipoDatoToString(izq.tipo), 
       TipoDatoToString(der.tipo));
     ErrorSemantico(mensaje);
@@ -330,31 +337,31 @@ TOKEN ProximoToken(){
     flagToken = 1;
     if (tokenActual == ID) {
       Buscar(buffer, TS, &tokenActual);
-      };
-      };
-      return tokenActual;
-      /*
-  if (!flagToken) {
-    tokenActual = scanner();
-    if(tokenActual == ERRORLEXICO) {
-      ErrorLexico();
-      // opcional: mostrar buffer para ver qué produjo el error
-      fprintf(stderr, "DEBUG scanner -> ERRORLEXICO, buffer='%s'\n", buffer);
-    }
-    flagToken = 1;
-    
-    // Si es ID, la búsqueda puede convertirlo en palabra reservada
-    if (tokenActual == ID) {
-      // Guardamos el token devuelto por la TS en tokenActual
-      Buscar(buffer, TS, &tokenActual);
-    }
-    
-    // DEBUG: imprimir qué token fue producido y cuál es su lexema
-    // Usamos stderr para no mezclar con la salida normal del compilador (stdout)
-    fprintf(stderr, "DEBUG ProximoToken -> token=%d lexema='%s'\n", tokenActual, buffer);
-  }
+    };
+  };
   return tokenActual;
-  */
+      /*
+      if (!flagToken) {
+        tokenActual = scanner();
+        if(tokenActual == ERRORLEXICO) {
+          ErrorLexico();
+          // opcional: mostrar buffer para ver qué produjo el error
+          fprintf(stderr, "DEBUG scanner -> ERRORLEXICO, buffer='%s'\n", buffer);
+        }
+        flagToken = 1;
+        
+        // Si es ID, la búsqueda puede convertirlo en palabra reservada
+        if (tokenActual == ID) {
+          // Guardamos el token devuelto por la TS en tokenActual
+          Buscar(buffer, TS, &tokenActual);
+        }
+        
+        // DEBUG: imprimir qué token fue producido y cuál es su lexema
+        // Usamos stderr para no mezclar con la salida normal del compilador (stdout)
+        fprintf(stderr, "DEBUG ProximoToken -> token=%d lexema='%s'\n", tokenActual, buffer);
+      }
+      return tokenActual;
+      */
 };
 
 void ErrorLexico(){
