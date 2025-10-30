@@ -66,13 +66,14 @@ typedef struct {
 } REG_EXPRESION;
 
 extern RegTS TS[1000];
-extern char buffer[TAMLEX]; //Preguntar si tiene sentido 'extern'
+extern char buffer[TAMLEX];
 extern TOKEN tokenActual;
 extern int flagToken;
 
 /**********************PROTOTIPOS DE FUNCIONES************************/
 // Fase léxica (Implementadas en 'scanner.c')
 TOKEN scanner();
+void procesarFinalToken(int col, int car, FILE* in, char* buffer, int i);
 int columna(int c);
 int estadoFinal(int e);
 

@@ -1,4 +1,6 @@
 inicio
-  char c;
-  c := ;
+  int a;
+  a := 5;
+  escribir(a);
+  leer(a);
 fin
