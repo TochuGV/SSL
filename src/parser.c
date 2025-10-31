@@ -580,9 +580,7 @@ char* NuevaEtiqueta(void){
 
 void GenerarEtiqueta(char* e){
   printf("%s:\n", e);
-<<<<<<< HEAD
 };
-
 
 void Condicion(REG_EXPRESION* presul){
   REG_EXPRESION izq, der;
@@ -748,6 +746,4 @@ void SentenciaRepetir(void) {
   // Si la condición es falsa, repetir el bucle
   Generar("Bf", Extraer(&condicion), etiquetaInicio, "");
   free(etiquetaInicio);
-=======
->>>>>>> 1cdb6e1d003f8a9083c26a5ff35667791bd46fc9
 };
