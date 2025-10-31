@@ -66,19 +66,22 @@ typedef struct {
 } REG_EXPRESION;
 
 extern RegTS TS[1000];
-extern char buffer[TAMLEX]; //Preguntar si tiene sentido 'extern'
+extern char buffer[TAMLEX];
 extern TOKEN tokenActual;
 extern int flagToken;
 
 /**********************PROTOTIPOS DE FUNCIONES************************/
 // Fase léxica (Implementadas en 'scanner.c')
 TOKEN scanner();
+void procesarFinalToken(int col, int car, FILE* in, char* buffer, int i);
 int columna(int c);
 int estadoFinal(int e);
 
 // Fase sintáctica (Implementadas en 'parser.c')
 void Objetivo(void);
 void Programa(void);
+void ListaDeclaraciones(void);
+void Declaracion(void);
 void ListaSentencias(void);
 void Sentencia(void);
 void ListaIdentificadores(TIPO_DATO tipo_asociado);
@@ -87,9 +90,9 @@ void ListaExpresiones(void);
 void Expresion(REG_EXPRESION* presul);
 void Primaria(REG_EXPRESION* presul);
 void OperadorAditivo(char* presul);
-void ListaDeclaraciones(void);
-void Declaracion(void);
 void SentenciaSi(void);
+void SentenciaMientras(void);
+void SentenciaRepetirHasta(void);
 void Condicion(REG_EXPRESION* presul);
 void SentenciaMientras(void);
 void SentenciaRepetir(void);
@@ -100,9 +103,12 @@ char* ProcesarOp(void);
 void Leer(REG_EXPRESION in);
 void Escribir(REG_EXPRESION out);
 REG_EXPRESION GenInfijo(REG_EXPRESION e1, char* op, REG_EXPRESION e2);
+REG_EXPRESION GenLogico(REG_EXPRESION e1, char* op, REG_EXPRESION e2);
 void Comenzar(void);
 void Terminar(void);
 void Asignar(REG_EXPRESION izq, REG_EXPRESION der);
+
+// Funciones auxiliares (Implementadas en 'parser.c')
 void Match(TOKEN t);
 TOKEN ProximoToken();
 void ErrorLexico();
@@ -115,5 +121,9 @@ void Colocar(char* id, RegTS* TS, TIPO_DATO tipo);
 void Chequear(char* s, TIPO_DATO tipo);
 char* TipoDatoToString(TIPO_DATO tipo);
 char* NuevaEtiqueta(void);
+<<<<<<< HEAD
 void GenerarEtiqueta(char* e);
 REG_EXPRESION GenLogico(REG_EXPRESION e1, char* op, REG_EXPRESION e2);
+=======
+void GenerarEtiqueta(char* e);
+>>>>>>> 1cdb6e1d003f8a9083c26a5ff35667791bd46fc9

@@ -107,7 +107,7 @@ void Sentencia(void){
       SentenciaSi();
       break;
     case REPETIR:
-      SentenciaRepetir();
+      SentenciaRepetirHasta();
     default:
       return;
   };
@@ -213,7 +213,113 @@ void OperadorAditivo(char* presul){
   } else ErrorSintactico(t);
 };
 
-/**********************RUTINAS SEMÁNTICAS******************************/
+void SentenciaSi(void){
+  /* <sentencia_si> -> SI ( <condición> ) ENTONCES <listaSentencias> [SINO <listaSentencias>] FIN_SI ; */
+  REG_EXPRESION cond;
+  char* etiqueta_sino = NuevaEtiqueta();
+  char* etiqueta_fin  = NuevaEtiqueta();
+
+  Match(SI);
+  Match(PARENIZQUIERDO);
+  Condicion(&cond);
+  Match(PARENDERECHO);
+  // Consumir 'ENTONCES' y generar salto condicional
+  Match(ENTONCES);
+  Generar("Bf", cond.nombre, "", etiqueta_sino);
+  // Cuerpo del SI (verdadero)
+  ListaSentencias();
+  // Procesar SINO (opcional)
+  if(ProximoToken() == SINO){
+    Generar("Br", "", "", etiqueta_fin);    // Salto al final del SI
+    GenerarEtiqueta(etiqueta_sino);         // Etiqueta del SINO
+    Match(SINO);
+    ListaSentencias();
+    GenerarEtiqueta(etiqueta_fin);          // Fin del SINO
+  } else {
+    GenerarEtiqueta(etiqueta_sino);         // Etiqueta del final si no hay SINO
+  };
+
+  Match(FIN_SI);
+  free(etiqueta_sino);
+  free(etiqueta_fin);
+};
+
+void SentenciaMientras(void){
+  char *etiquetaInicio, *etiquetaFin;
+  REG_EXPRESION condicion;
+  TOKEN tok;
+
+  Match(MIENTRAS);
+  etiquetaInicio = NuevaEtiqueta();
+  GenerarEtiqueta(etiquetaInicio); // Marca el comienzo del bucle
+
+  Match(PARENIZQUIERDO);
+  Condicion(&condicion);
+  Match(PARENDERECHO);
+
+  etiquetaFin = NuevaEtiqueta();
+  Generar("Bf", Extraer(&condicion), etiquetaFin, ""); // Si la condición es falsa, salta al fin
+
+  Match(HACER);
+
+  tok = ProximoToken();
+  while (tok != FIN_MIENTRAS && tok != FDT) {
+    Sentencia();       // Consume el tokenActual
+    tok = ProximoToken(); // Actualiza tok para la siguiente iteración
+  };
+
+  Generar("Bi", etiquetaInicio, "", ""); // Vuelve al inicio
+  GenerarEtiqueta(etiquetaFin); // Fin del bucle
+
+  Match(FIN_MIENTRAS);
+  free(etiquetaInicio);
+  free(etiquetaFin);
+};
+
+void SentenciaRepetirHasta(void){
+  char *etiquetaInicio;
+  REG_EXPRESION condicion;
+  TOKEN tok;
+
+  Match(REPETIR);
+
+  etiquetaInicio = NuevaEtiqueta();
+  GenerarEtiqueta(etiquetaInicio); // Marca el inicio del bucle
+
+  // Ejecuta el cuerpo del repetir al menos una vez
+  do {
+    Sentencia();
+    tok = ProximoToken();
+
+    if (tok == PUNTOYCOMA) {
+      Match(PUNTOYCOMA);
+      tok = ProximoToken();
+    }
+  } while (tok != HASTA && tok != FDT);
+
+  Match(HASTA);
+  Match(PARENIZQUIERDO);
+  Condicion(&condicion);
+  Match(PARENDERECHO);
+
+  // Si la condición es falsa, repetir el bucle
+  Generar("Bf", Extraer(&condicion), etiquetaInicio, "");
+  free(etiquetaInicio);
+};
+
+void Condicion(REG_EXPRESION* presul){
+  REG_EXPRESION izq, der;
+  char op[TAMLEX];
+  Expresion(&izq);
+  // Copiamos el operador relacional del buffer ANTES de hacer Match
+  strcpy(op, ProcesarOp());
+  Match(OP_RELACIONAL);
+  //printf("%s\n", op);
+  Expresion(&der);
+  *presul = GenLogico(izq, op, der);
+};
+
+/********************** Rutinas semánticas ******************************/
 REG_EXPRESION ProcesarCte(TOKEN clase){
   REG_EXPRESION reg;
   reg.clase = clase;
@@ -300,6 +406,42 @@ REG_EXPRESION GenInfijo(REG_EXPRESION e1, char* op, REG_EXPRESION e2){
   return reg;
 };
 
+REG_EXPRESION GenLogico(REG_EXPRESION e1, char* op, REG_EXPRESION e2){
+  /* Genera código 3AC para comparación y retorna el temporal con el resultado */
+  REG_EXPRESION reg;
+  static unsigned int numTempLogico = 1;
+  char cadTemp[TAMLEX] = "TempLog&";
+  char cadNum[TAMLEX];
+  char cadOp[TAMLEX];
+
+  // Determinar la instrucción 3AC según el operador relacional
+  if (!strcmp(op, "==")) strcpy(cadOp, "ComparaIGUAL");
+  else if (!strcmp(op, "!=")) strcpy(cadOp, "ComparaDISTINTO");
+  else if (!strcmp(op, ">")) strcpy(cadOp, "ComparaMAYOR");
+  else if (!strcmp(op, "<")) strcpy(cadOp, "ComparaMENOR");
+  else if (!strcmp(op, ">=")) strcpy(cadOp, "ComparaMAYORIGUAL");
+  else if (!strcmp(op, "<=")) strcpy(cadOp, "ComparaMENORIGUAL");
+  else {
+    printf("ERROR SEMANTICO: Operador relacional desconocido en GenLogico: '%s'\n", op);
+    strcpy(cadOp, "ComparaDESCONOCIDO");
+  }
+
+  // Crear un nuevo temporal
+  sprintf(cadNum, "%d", numTempLogico++);
+  strcat(cadTemp, cadNum);
+
+  // Declarar el temporal y generar la instrucción
+  Chequear(cadTemp, T_ENTERO); // Resultado lógico es siempre entero (0 o 1)
+  if(e1.clase == ID) Chequear(Extraer(&e1), e1.tipo);
+  if(e2.clase == ID) Chequear(Extraer(&e2), e2.tipo);
+
+  Generar(cadOp, Extraer(&e1), Extraer(&e2), cadTemp);
+
+  strcpy(reg.nombre, cadTemp);
+  reg.tipo = T_ENTERO;
+  return reg;
+};
+
 void Comenzar(void){
   /* Inicializaciones Semanticas */
 };
@@ -324,7 +466,7 @@ void Asignar(REG_EXPRESION izq, REG_EXPRESION der){
   Generar("Almacena", Extraer(&der), izq.nombre, "");
 };
 
-/***************FUNCIONES AUXILIARES**********************************/
+/*************** Funciones auxiliares **********************************/
 void Match(TOKEN t){
   if(!(t == ProximoToken())) ErrorSintactico();
   flagToken = 0;
@@ -438,6 +580,7 @@ char* NuevaEtiqueta(void){
 
 void GenerarEtiqueta(char* e){
   printf("%s:\n", e);
+<<<<<<< HEAD
 };
 
 
@@ -605,4 +748,6 @@ void SentenciaRepetir(void) {
   // Si la condición es falsa, repetir el bucle
   Generar("Bf", Extraer(&condicion), etiquetaInicio, "");
   free(etiquetaInicio);
+=======
+>>>>>>> 1cdb6e1d003f8a9083c26a5ff35667791bd46fc9
 };

@@ -20,150 +20,79 @@ RegTS TS[1000] = {
   {"hasta", HASTA, T_DESCONOCIDO},
   {"$", 99, T_DESCONOCIDO}
 };
+
 char buffer[TAMLEX];
 TOKEN tokenActual;
 int flagToken = 0;
 
 TOKEN scanner(){
-  /*
-  * MAPEO COMPLETO DE ESTADOS DEL ANALIZADOR LÉXICO (NUMESTADOS = 20)
-  * * --- ESTADOS BASE Y DE PALABRAS CLAVE (0-10) ---
-  * Estado 0: --> INICIAL / REPOSO (Punto de partida del scanner).
-  * Estado 1: --> ID EN PROGRESO (Leída la primera letra o dígito: 'i', 'a1').
-  * Estado 2: --> FINAL ID/KEYWORD (Devuelve ID, INICIO, SI, FLOAT, etc.).
-  * Estado 3: --> CONSTANTE INT EN PROGRESO (Leído el primer dígito: '1').
-  * Estado 4: --> FINAL CONSTANTE INT (Devuelve CONSTANTE_INT).
-  * * Estado 5: --> FINAL SUMA (+)
-  * Estado 6: --> FINAL RESTA (-)
-  * Estado 7: --> FINAL PARENIZQUIERDO
-  * Estado 8: --> FINAL PARENDERECHO
-  * Estado 9: --> FINAL COMA
-  * Estado 10: -> FINAL PUNTOYCOMA
-  * * --- ESTADOS DE LOOKAHEAD Y ERROR (11-14) ---
-  * Estado 11: -> LOOKAHEAD ASIGNACION (Visto ':'). Esperando '='.
-  * Estado 12: -> FINAL ASIGNACION (Devuelve ASIGNACION :=).
-  * Estado 13: -> FINAL FDT (Fin de Archivo).
-  * Estado 14: -> ERROR SUMIDERO (ERRORLEXICO: Patrón inválido o carácter desconocido).
-  * * --- ESTADOS DE FLOTANTES Y RELACIONALES (15-19) ---
-  * Estado 15: -> LOOKAHEAD CONSTANTE FLOAT (Visto '12.'). Esperando dígitos decimales.
-  * Estado 16: -> FINAL CONSTANTE FLOAT (Devuelve CONSTANTE_FLOAT).
-  * Estado 17: -> FINAL/LOOKAHEAD OP. RELACIONAL SIMPLE (Visto '=', '<', '>'). 
-  * Devuelve OP_RELACIONAL si no sigue otro símbolo.
-  * Estado 18: -> LOOKAHEAD OP. NEGACIÓN (Visto '!'). Esperando '=' para '!='.
-  * Estado 19: -> FINAL OP. RELACIONAL DOBLE (Devuelve OP_RELACIONAL: <=, >=, !=).
-  */
-
-  /*
-  * MAPEO DE COLUMNAS DE ENTRADA (NUMCOLS = 16)
-  * Col 0: --> Letra (a-z, A-Z)
-  * Col 1: --> Dígito (0-9)
-  * Col 2: --> Signo '+'
-  * Col 3: --> Signo '-'
-  * Col 4: --> Signo '('
-  * Col 5: --> Signo ')'
-  * Col 6: --> Signo ','
-  * Col 7: --> Signo ';'
-  * Col 8: --> Signo ':'
-  * Col 9: --> Signo '=' (Utilizado para relacionales y para completar ':=')
-  * Col 10: -> EOF (End of File / Fin de Texto)
-  * Col 11: -> Espacio en blanco (space, tab, newline)
-  * Col 12: -> Signo '.' (Punto Decimal)
-  * Col 13: -> Operadores Relacionales Simples ('<' o '>')
-  * Col 14: -> Signo '!' (Lookahead de Operador '!=')
-  * Col 15: -> Otro Carácter (Cualquier cosa no mapeada)
-  */
-
   int tabla[NUMESTADOS][NUMCOLS] = { 
-    /* 0 */ { 1, 3, 5, 6, 7, 8, 9, 10, 11, 20, 13, 0, 14, 17, 18, 21, 14 }, 
-    /* 1 */ { 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 14 },       // ID en progreso
-    /* 2 */ { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }, 
-    /* 3 */ { 4, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 15, 4, 4, 4, 14 },      // INT: en '.' va a 15
-    /* 4 */ { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }, 
-    /* 5 */ { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }, 
-    /* 6 */ { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }, 
-    /* 7 */ { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }, 
-    /* 8 */ { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }, 
-    /* 9 */ { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }, 
-    /* 10 */{ 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }, 
-    /* 11 */{ 14, 14, 14, 14, 14, 14, 14, 14, 14, 12, 14, 14, 14, 14, 14, 14, 14 }, // Lookahead para ASIGNACION (solo acepta '=')
-    /* 12 */{ 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }, 
-    /* 13 */{ 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }, 
-    /* 14 */{ 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }, 
-    
-    // ESTADOS NUEVOS (Flotantes)
-    /* 15 */{ 16, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 14 }, // En DIGITO (1) se queda en 15.
-    /* 16 */{ 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }, 
-    
-    // ESTADOS NUEVOS (Operadores Relacionales)
-    /* 17 */{ 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 14 }, // Op. Relacional: en '=' va a 19 (ej: <=)
-    /* 18 */{ 14, 14, 14, 14, 14, 14, 14, 14, 14, 19, 14, 14, 14, 14, 14, 14, 14 }, // Lookahead '!' solo acepta '=' para ir a 19 (ej: !=)
-    /* 19 */{ 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },  // Final Op. Relacional
-    /* 20 */{ 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 14 }, // "=="
-    
-    /* 21 */{ 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22 }, //Inicio de char
-    /* 22 */{ 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 23, 22 }, //Caracter dentro de char
-    /* 23 */{ 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 }, //Cierre de char
+    /* 0 */   { 1, 3, 5, 6, 7, 8, 9, 10, 11, 20, 13, 0, 14, 17, 18, 21, 14 },
+    /* 1 */   { 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 14 },
+    /* 2 */   { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },
+    /* 3 */   { 4, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 15, 4, 4, 4, 14 },
+    /* 4 */   { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },
+    /* 5 */   { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },
+    /* 6 */   { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },
+    /* 7 */   { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },
+    /* 8 */   { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },
+    /* 9 */   { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },
+    /* 10 */  { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },
+    /* 11 */  { 14, 14, 14, 14, 14, 14, 14, 14, 14, 12, 14, 14, 14, 14, 14, 14, 14 },
+    /* 12 */  { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },
+    /* 13 */  { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },
+    /* 14 */  { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },
+    /* 15 */  { 16, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 14 },
+    /* 16 */  { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },
+    /* 17 */  { 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 14 },
+    /* 18 */  { 14, 14, 14, 14, 14, 14, 14, 14, 14, 19, 14, 14, 14, 14, 14, 14, 14 },
+    /* 19 */  { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },
+    /* 20 */  { 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 14 },
+    /* 21 */  { 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22 },
+    /* 22 */  { 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 23, 22 },
+    /* 23 */  { 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14 },
   };
 
-  //memset(buffer, 0, sizeof(buffer));
   int car;
   int col;
   int estado = 0;
   int i = 0;
-  
+
   memset(buffer, 0, sizeof(buffer));
   
   do {
     car = fgetc(in);
     col = columna(car);
-    //printf("DEBUG scanner loop: car=%d('%c') col=%d estado_previo=%d\n", car, (car==EOF? '?' : car), col, estado);
     estado = tabla[estado][col];
-    //printf(" -> estado_nuevo=%d\n", estado);
     if(col != 11 || estado == 22){
       buffer[i] = car;
       i++;
     };
-  } while(!estadoFinal(estado) && !(estado == 14));
+  } while (!estadoFinal(estado) && !(estado == 14));
 
   buffer[i] = '\0';
 
-  //printf("ESTADO ACTUAL: %d\n", estado);
   switch(estado){
     case 2: 
-      if (col != 11) {
-        ungetc(car, in);
-        buffer[i-1] = '\0';
-      };
+      procesarFinalToken(col, car, in, buffer, i);
       return ID;
     case 4:
-      if (col != 11) {
-        ungetc(car, in);
-        buffer[i-1] = '\0';
-      };
+      procesarFinalToken(col, car, in, buffer, i);
       return CONSTANTE_INT;
     case 16:
-      if (col != 11) {
-        ungetc(car, in);
-        buffer[i-1] = '\0';
-      };
+      procesarFinalToken(col, car, in, buffer, i);
       return CONSTANTE_FLOAT;
-    case 17: // < o >
+    case 17:
       buffer[i] = '\0';
       // Si lo que sigue no pertenece al siguiente token, devolverlo
-      if (car != EOF && !isspace(car) && car != ';' && car != ')' && car != '(')
-        ungetc(car, in);
+      if (car != EOF && !isspace(car) && car != ';' && car != ')' && car != '(') ungetc(car, in);
       return OP_RELACIONAL;
-    case 19: // >= o <= o == o !=
+    case 19:
     case 20:
       buffer[i] = '\0';
       // No devolver el carácter, porque ya fue consumido por lookahead.
       return OP_RELACIONAL;
     case 23: 
-      //if (col != 11) ungetc(car, in);
-      //printf("%s", "HOLA");
-      //buffer[i] = '\0';
-      //printf("buffer[0]=%c buffer[1]=%c buffer[2]=%c\n", buffer[0], buffer[1], buffer[2]);
-      //printf("BUFFER COMPLETO: '%s'\n", buffer);
       if (strlen(buffer) == 3 && buffer[0]=='\'' && buffer[2]=='\'') {
         char valor = (strlen(buffer) == 3) ? buffer[1] : '\0';
         buffer[0] = valor;
@@ -181,9 +110,16 @@ TOKEN scanner(){
     case 12: return ASIGNACION;
     case 13: return FDT;
     case 14: return ERRORLEXICO;
-    case 18: return ERRORLEXICO; // Si se queda en 18 es porque vio '!' y no '='.
+    case 18: return ERRORLEXICO; // Si se queda en 18 es porque leyó '!' y no '='.
   };
   return 0;
+};
+
+void procesarFinalToken(int col, int car, FILE* in, char* buffer, int i){
+  if (col != 11) {
+    ungetc(car, in);
+    buffer[i-1] = '\0';
+  };
 };
 
 int estadoFinal(int e){
