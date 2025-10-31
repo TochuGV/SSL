@@ -612,10 +612,10 @@ REG_EXPRESION GenLogico(REG_EXPRESION e1, char* op, REG_EXPRESION e2){
   else if (!strcmp(op, ">=")) strcpy(cadOp, "ComparaMAYORIGUAL");
   else if (!strcmp(op, "<=")) strcpy(cadOp, "ComparaMENORIGUAL");
   else {
-     char mensajeError[256];
+    char mensajeError[256];
     sprintf(mensajeError, "Operador relacional desconocido en GenLogico: '%s'", op);
     ErrorSemantico(mensajeError);
-  }
+  };
 
   // Crear un nuevo temporal
   sprintf(cadNum, "%d", numTempLogico++);
