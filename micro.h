@@ -121,9 +121,5 @@ void Colocar(char* id, RegTS* TS, TIPO_DATO tipo);
 void Chequear(char* s, TIPO_DATO tipo);
 char* TipoDatoToString(TIPO_DATO tipo);
 char* NuevaEtiqueta(void);
-<<<<<<< HEAD
 void GenerarEtiqueta(char* e);
 REG_EXPRESION GenLogico(REG_EXPRESION e1, char* op, REG_EXPRESION e2);
-=======
-void GenerarEtiqueta(char* e);
->>>>>>> 1cdb6e1d003f8a9083c26a5ff35667791bd46fc9
