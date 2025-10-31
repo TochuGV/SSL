@@ -94,8 +94,7 @@ void SentenciaSi(void);
 void SentenciaMientras(void);
 void SentenciaRepetirHasta(void);
 void Condicion(REG_EXPRESION* presul);
-void SentenciaMientras(void);
-void SentenciaRepetir(void);
+
 // Rutinas semánticas (Implementadas en 'parser.c')
 REG_EXPRESION ProcesarCte(TOKEN clase);
 REG_EXPRESION ProcesarId(void);
