@@ -10,7 +10,7 @@ void Objetivo(void){
 
 void Programa(void){
   /* <programa> -> #comenzar INICIO <listaSentencias> FIN */
-  Comenzar();// invocacion a las rutinas semanticas, en la gramatica se coloca con #
+  Comenzar();
   Match(INICIO);
   ListaDeclaraciones();
   ListaSentencias();
@@ -28,8 +28,6 @@ void Declaracion(void){
   /* <declaracion> -> <Tipo> <ListaIdentificadores> ; */
   TOKEN tipo_token = ProximoToken();
   TIPO_DATO tipo_semantico = T_DESCONOCIDO;
-
-  // 1. Determinar el TIPO_DATO (Semántica)
   switch (tipo_token) {
     case TIPO_CHAR:
       tipo_semantico = T_CARACTER;
@@ -44,12 +42,8 @@ void Declaracion(void){
       tipo_semantico = T_DESCONOCIDO;
       break;
   };
-
-  // 2. Consumir el token de tipo (Sintaxis)
   Match(tipo_token);
-  // 3. Procesar la lista de IDs, pasándole el tipo para que sean registradas en la TS
   ListaIdentificadores(tipo_semantico);
-  // 4. Consumir el final
   Match(PUNTOYCOMA);
 };
 
@@ -108,6 +102,7 @@ void Sentencia(void){
       break;
     case REPETIR:
       SentenciaRepetirHasta();
+      break;
     default:
       return;
   };
@@ -118,24 +113,20 @@ void ListaIdentificadores(TIPO_DATO tipo_asociado){
   TOKEN t;
   REG_EXPRESION reg;
   Identificador(&reg);
-
   if (tipo_asociado != T_DESCONOCIDO) { // Si es distinto, es porque estamos declarando.
     reg.tipo = tipo_asociado;
-    Chequear(reg.nombre, reg.tipo); // Se registra el ID con el tipo de dato.
+    Chequear(reg.nombre, reg.tipo);     // Se registra el ID con el tipo de dato.
   } else {
-    // Si no se está declarando, se está leyendo.
-    Leer(reg);
+    Leer(reg);                          // Si no se está declarando, se está leyendo.
   };
-
   for(t = ProximoToken(); t == COMA; t = ProximoToken()){
     Match(COMA);
     Identificador(&reg);
     if (tipo_asociado != T_DESCONOCIDO) { // Si es distinto, es porque estamos declarando.
       reg.tipo = tipo_asociado;
-      Chequear(reg.nombre, reg.tipo); // Se registra el ID con el tipo de dato.
+      Chequear(reg.nombre, reg.tipo);     // Se registra el ID con el tipo de dato.
     } else {
-    // Si no se está declarando, se está leyendo.
-    Leer(reg);
+    Leer(reg);                            // Si no se está declarando, se está leyendo.
     };
   };
 };
@@ -186,10 +177,12 @@ void Primaria(REG_EXPRESION* presul){
       *presul = ProcesarCte(CONSTANTE_INT);
       break;
     case CONSTANTE_FLOAT:
+      /* <primaria> -> CONSTANTE #procesar_cte */
       Match(CONSTANTE_FLOAT);
       *presul = ProcesarCte(CONSTANTE_FLOAT);
       break;
     case CONSTANTE_CHAR:
+      /* <primaria> -> CONSTANTE #procesar_cte */
       Match(CONSTANTE_CHAR);
       *presul = ProcesarCte(CONSTANTE_CHAR);
       break;
@@ -218,27 +211,23 @@ void SentenciaSi(void){
   REG_EXPRESION cond;
   char* etiqueta_sino = NuevaEtiqueta();
   char* etiqueta_fin  = NuevaEtiqueta();
-
   Match(SI);
   Match(PARENIZQUIERDO);
   Condicion(&cond);
   Match(PARENDERECHO);
-  // Consumir 'ENTONCES' y generar salto condicional
   Match(ENTONCES);
   Generar("Bf", cond.nombre, "", etiqueta_sino);
-  // Cuerpo del SI (verdadero)
   ListaSentencias();
-  // Procesar SINO (opcional)
-  if(ProximoToken() == SINO){
-    Generar("Br", "", "", etiqueta_fin);    // Salto al final del SI
-    GenerarEtiqueta(etiqueta_sino);         // Etiqueta del SINO
+  
+  if (ProximoToken() == SINO) {
+    Generar("Br", "", "", etiqueta_fin);  // Salto al final del SI
+    GenerarEtiqueta(etiqueta_sino);       // Etiqueta del SINO
     Match(SINO);
     ListaSentencias();
-    GenerarEtiqueta(etiqueta_fin);          // Fin del SINO
+    GenerarEtiqueta(etiqueta_fin);        // Fin del SINO
   } else {
-    GenerarEtiqueta(etiqueta_sino);         // Etiqueta del final si no hay SINO
+    GenerarEtiqueta(etiqueta_sino);       // Etiqueta del final si no hay SINO
   };
-
   Match(FIN_SI);
   free(etiqueta_sino);
   free(etiqueta_fin);
@@ -248,29 +237,25 @@ void SentenciaMientras(void){
   char *etiquetaInicio, *etiquetaFin;
   REG_EXPRESION condicion;
   TOKEN tok;
-
+  
   Match(MIENTRAS);
   etiquetaInicio = NuevaEtiqueta();
   GenerarEtiqueta(etiquetaInicio); // Marca el comienzo del bucle
-
   Match(PARENIZQUIERDO);
   Condicion(&condicion);
   Match(PARENDERECHO);
-
   etiquetaFin = NuevaEtiqueta();
   Generar("Bf", Extraer(&condicion), etiquetaFin, ""); // Si la condición es falsa, salta al fin
-
   Match(HACER);
-
   tok = ProximoToken();
+  
   while (tok != FIN_MIENTRAS && tok != FDT) {
-    Sentencia();       // Consume el tokenActual
+    Sentencia();          // Consume el tokenActual
     tok = ProximoToken(); // Actualiza tok para la siguiente iteración
   };
 
   Generar("Bi", etiquetaInicio, "", ""); // Vuelve al inicio
-  GenerarEtiqueta(etiquetaFin); // Fin del bucle
-
+  GenerarEtiqueta(etiquetaFin);          // Fin del bucle
   Match(FIN_MIENTRAS);
   free(etiquetaInicio);
   free(etiquetaFin);
@@ -280,12 +265,10 @@ void SentenciaRepetirHasta(void){
   char *etiquetaInicio;
   REG_EXPRESION condicion;
   TOKEN tok;
-
   Match(REPETIR);
-
   etiquetaInicio = NuevaEtiqueta();
   GenerarEtiqueta(etiquetaInicio); // Marca el inicio del bucle
-
+  
   // Ejecuta el cuerpo del repetir al menos una vez
   do {
     Sentencia();
@@ -301,7 +284,6 @@ void SentenciaRepetirHasta(void){
   Match(PARENIZQUIERDO);
   Condicion(&condicion);
   Match(PARENDERECHO);
-
   // Si la condición es falsa, repetir el bucle
   Generar("Bf", Extraer(&condicion), etiquetaInicio, "");
   free(etiquetaInicio);
@@ -324,6 +306,7 @@ REG_EXPRESION ProcesarCte(TOKEN clase){
   REG_EXPRESION reg;
   reg.clase = clase;
   strcpy(reg.nombre, buffer);
+  
   if (clase == CONSTANTE_INT) {
     reg.tipo = T_ENTERO;
     sscanf(buffer, "%d", &reg.valor_entero);
@@ -336,6 +319,7 @@ REG_EXPRESION ProcesarCte(TOKEN clase){
     reg.tipo = T_CARACTER;
     reg.valor_entero = buffer[1];
   };
+  
   return reg;
 };
 
@@ -422,9 +406,8 @@ REG_EXPRESION GenLogico(REG_EXPRESION e1, char* op, REG_EXPRESION e2){
   else if (!strcmp(op, ">=")) strcpy(cadOp, "ComparaMAYORIGUAL");
   else if (!strcmp(op, "<=")) strcpy(cadOp, "ComparaMENORIGUAL");
   else {
-    char mensajeError[256];
-    sprintf(mensajeError, "Operador relacional desconocido en GenLogico: '%s'", op);
-    ErrorSemantico(mensajeError);
+    printf("ERROR SEMANTICO: Operador relacional desconocido en GenLogico: '%s'\n", op);
+    strcpy(cadOp, "ComparaDESCONOCIDO");
   }
 
   // Crear un nuevo temporal
@@ -437,7 +420,6 @@ REG_EXPRESION GenLogico(REG_EXPRESION e1, char* op, REG_EXPRESION e2){
   if(e2.clase == ID) Chequear(Extraer(&e2), e2.tipo);
 
   Generar(cadOp, Extraer(&e1), Extraer(&e2), cadTemp);
-
   strcpy(reg.nombre, cadTemp);
   reg.tipo = T_ENTERO;
   return reg;
@@ -457,7 +439,7 @@ void Asignar(REG_EXPRESION izq, REG_EXPRESION der){
   if (izq.tipo == T_DESCONOCIDO || der.tipo == T_DESCONOCIDO) 
     ErrorSemantico("Uso de identificador no declarado o tipo desconocido.");
   if (izq.tipo != der.tipo) {
-    char mensaje[128];
+    char mensaje[128]; // Lo implementamos de esta forma porque considerábamos que era la más prolija, más que nada porque está bueno tener una función aparte para este tipo de error.
     sprintf(mensaje, "Asignacion incompatible (%s := %s)", 
       TipoDatoToString(izq.tipo), 
       TipoDatoToString(der.tipo));
@@ -483,28 +465,27 @@ TOKEN ProximoToken(){
     };
   };
   return tokenActual;
-      /*
-      if (!flagToken) {
-        tokenActual = scanner();
-        if(tokenActual == ERRORLEXICO) {
-          ErrorLexico();
-          // opcional: mostrar buffer para ver qué produjo el error
-          fprintf(stderr, "DEBUG scanner -> ERRORLEXICO, buffer='%s'\n", buffer);
-        }
-        flagToken = 1;
+  /*
+  if (!flagToken) {
+    tokenActual = scanner();
+    if (tokenActual == ERRORLEXICO) {
+      ErrorLexico();
+      // Opcional: mostrar buffer para ver qué produjo el error
+      fprintf(stderr, "DEBUG scanner -> ERRORLEXICO, buffer='%s'\n", buffer);
+    }
+    flagToken = 1;
         
-        // Si es ID, la búsqueda puede convertirlo en palabra reservada
-        if (tokenActual == ID) {
-          // Guardamos el token devuelto por la TS en tokenActual
-          Buscar(buffer, TS, &tokenActual);
-        }
-        
-        // DEBUG: imprimir qué token fue producido y cuál es su lexema
-        // Usamos stderr para no mezclar con la salida normal del compilador (stdout)
-        fprintf(stderr, "DEBUG ProximoToken -> token=%d lexema='%s'\n", tokenActual, buffer);
-      }
-      return tokenActual;
-      */
+    // Si es ID, la búsqueda puede convertirlo en palabra reservada
+    if (tokenActual == ID) {
+      // Guardamos el token devuelto por la TS en tokenActual
+      Buscar(buffer, TS, &tokenActual);
+    }
+    // DEBUG: imprimir qué token fue producido y cuál es su lexema
+    // Usamos stderr para no mezclar con la salida normal del compilador (stdout)
+    fprintf(stderr, "DEBUG ProximoToken -> token=%d lexema='%s'\n", tokenActual, buffer);
+    }
+    return tokenActual;
+  */
 };
 
 void ErrorLexico(){
@@ -556,7 +537,7 @@ void Colocar(char* id, RegTS* TS, TIPO_DATO tipo){
 };
 
 void Chequear(char* s, TIPO_DATO tipo){
-  /* Si la cadena No esta en la Tabla de Simbolos la agrega,
+  /* Si la cadena no está en la Tabla de Símbolos la agrega,
   y si es el nombre de una variable genera la instruccion */
   TOKEN t;
   if (!Buscar(s, TS, &t)) {
